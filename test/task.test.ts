@@ -71,7 +71,7 @@ test('installs a release, then reuses the tool cache for its exact version', { s
   assert.equal(first.status, 0, first.output);
   assert.match(first.stdout, /task.complete result=Succeeded/, first.output);
   assert.match(first.stdout, /Installing the \w+-\w+ Dart SDK version 3\.9\.4 from the stable \(release\) channel\./);
-  assert.match(first.stdout, /Download is not corrupt: SHA-256 [0-9a-f]{64} matches the published hash\./);
+  assert.match(first.stdout, /SHA-256 [0-9a-f]{64} matches the published checksum\./);
   assert.match(first.output, /Dart SDK version: 3\.9\.4 \(stable\)/);
   assertNoLocalizationWarnings(first.output);
 

@@ -70,7 +70,7 @@ async function downloadSdk(url: string, platform: DartPlatform, arch: Architectu
     if (actual !== expected) {
       throw new Error(`SHA-256 mismatch for ${fileName}: expected ${expected}, downloaded ${actual}.`);
     }
-    console.log(`Download is not corrupt: SHA-256 ${actual} matches the published hash.`);
+    console.log(`SHA-256 ${actual} matches the published checksum.`);
 
     const sdkDirectory = path.join(await extractZip(archive), 'dart-sdk');
     if (!fs.existsSync(path.join(sdkDirectory, 'version'))) {
