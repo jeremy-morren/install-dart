@@ -64,13 +64,13 @@ function isCi(env: NodeJS.ProcessEnv): boolean {
 
 /**
  * The version stamped into the packaged task and extension manifests.
- * CI must supply RELEASE_VERSION (from `npm run release:version`), local builds use patch 0.
+ * CI must supply RELEASE_VERSION (the `version` output of the `npm run release:version` step), local builds use patch 0.
  */
 export function buildVersion(line: VersionLine, env: NodeJS.ProcessEnv = process.env): string {
   const requested = env.RELEASE_VERSION;
   if (!requested) {
     if (isCi(env)) {
-      throw new Error('RELEASE_VERSION is not set: run npm run release:version before building in CI.');
+      throw new Error('RELEASE_VERSION is not set: in CI, pass it the version output of the npm run release:version step.');
     }
     return `${line.major}.${line.minor}.0`;
   }

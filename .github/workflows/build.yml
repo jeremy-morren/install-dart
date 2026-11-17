@@ -38,6 +38,7 @@ jobs:
       - run: npm ci
 
       - name: Allocate the release version
+        id: version
         run: npm run release:version
         env:
           GH_TOKEN: ${{ github.token }}
@@ -46,6 +47,7 @@ jobs:
       # INSTALL_DART_E2E also installs a real Dart SDK on each operating system and architecture.
       - run: npm test
         env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
           INSTALL_DART_E2E: 'true'
 
       - uses: actions/upload-artifact@v7
@@ -94,31 +96,37 @@ jobs:
       - run: npm ci
 
       - name: Allocate the release version
+        id: version
         run: npm run release:version
         env:
           GH_TOKEN: ${{ github.token }}
 
       - run: npm run package
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
 
       - name: Attest build provenance for the VSIX
         id: attest
         uses: actions/attest@v4
         with:
-          subject-path: dist/install-dart-v${{ env.RELEASE_VERSION }}.vsix
+          subject-path: dist/install-dart-v${{ steps.version.outputs.version }}.vsix
 
       # Ship the Sigstore bundle with the release so the VSIX can also be verified offline.
       - name: Collect release assets
-        run: cp "${{ steps.attest.outputs.bundle-path }}" "dist/install-dart-v$RELEASE_VERSION.vsix.sigstore.json"
+        run: cp "$BUNDLE_PATH" "dist/install-dart-v$VERSION.vsix.sigstore.json"
+        env:
+          BUNDLE_PATH: ${{ steps.attest.outputs.bundle-path }}
+          VERSION: ${{ steps.version.outputs.version }}
 
       - uses: actions/upload-artifact@v7
         with:
           name: install-dart-vsix
-          path: dist/install-dart-v${{ env.RELEASE_VERSION }}.vsix*
+          path: dist/install-dart-v${{ steps.version.outputs.version }}.vsix*
 
       # Drafts are mutable; the release (and its assets) become immutable only when published.
       - name: Replace the draft release with the tested VSIX
         run: |
-          TAG="v$RELEASE_VERSION"
+          TAG="v$VERSION"
           if IS_DRAFT=$(gh release view "$TAG" --json isDraft --jq .isDraft); then
             if [ "$IS_DRAFT" != "true" ]; then
               echo "Release $TAG is published; refusing to replace it." >&2
@@ -132,3 +140,4 @@ jobs:
             --draft --target "$GITHUB_SHA" --title "$TAG" --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}

@@ -23,8 +23,8 @@ const version = nextReleaseVersion(
   ghPaginated('repos/{owner}/{repo}/tags?per_page=100')
 );
 
-// In GitHub Actions, later steps in the job build with this version.
-if (process.env.GITHUB_ENV) {
-  fs.appendFileSync(process.env.GITHUB_ENV, `RELEASE_VERSION=${version}\n`);
+// In GitHub Actions, expose the version as the step output `version`; steps that build pass it on as RELEASE_VERSION.
+if (process.env.GITHUB_OUTPUT) {
+  fs.appendFileSync(process.env.GITHUB_OUTPUT, `version=${version}\n`);
 }
 console.log(version);

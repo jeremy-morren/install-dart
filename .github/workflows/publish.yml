@@ -53,7 +53,9 @@ jobs:
             --source-ref refs/heads/main \
             --deny-self-hosted-runners
 
+      # Marketplace validation runs after the upload and can take up to 20 minutes; tfx's polling for it fails
+      # transiently. Check the result on the Marketplace, or with `tfx extension isvalid`.
       - name: Publish the release artifact to Visual Studio Marketplace
-        run: tfx extension publish --vsix "dist/install-dart-$RELEASE_TAG.vsix" --auth-type pat --token "$PUBLISH_TOKEN"
+        run: tfx extension publish --vsix "dist/install-dart-$RELEASE_TAG.vsix" --auth-type pat --token "$PUBLISH_TOKEN" --no-wait-validation
         env:
           PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}

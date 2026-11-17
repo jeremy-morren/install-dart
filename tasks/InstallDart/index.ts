@@ -45,6 +45,20 @@ async function resolveVersion(request: SdkRequest, flavor: Flavor): Promise<{ ch
   }
 }
 
+/**
+ * Extracts a zip into a new directory beside it. Outside Windows, tool-lib's extractZip runs `unzip` without `-q`,
+ * which logs a line for every file in the SDK; on Windows it uses PowerShell, which is already quiet.
+ */
+async function extractZip(archive: string): Promise<string> {
+  if (process.platform === 'win32') {
+    return toolLib.extractZip(archive);
+  }
+  const destination = path.join(path.dirname(archive), randomUUID());
+  tl.mkdirP(destination);
+  await tl.tool('unzip').arg(['-q', archive]).execAsync({ cwd: destination });
+  return destination;
+}
+
 /** Downloads, checks for corruption, and extracts the SDK; release builds are added to the agent tool cache. */
 async function downloadSdk(url: string, platform: DartPlatform, arch: Architecture, cacheVersion?: string): Promise<string> {
   const fileName = archiveFileName(platform, arch);
@@ -58,7 +72,7 @@ async function downloadSdk(url: string, platform: DartPlatform, arch: Architectu
     }
     console.log(`Download is not corrupt: SHA-256 ${actual} matches the published hash.`);
 
-    const sdkDirectory = path.join(await toolLib.extractZip(archive), 'dart-sdk');
+    const sdkDirectory = path.join(await extractZip(archive), 'dart-sdk');
     if (!fs.existsSync(path.join(sdkDirectory, 'version'))) {
       throw new Error(`${fileName} does not contain a dart-sdk directory.`);
     }

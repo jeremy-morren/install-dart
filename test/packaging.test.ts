@@ -46,7 +46,7 @@ test('CI builds must use the allocated release version; local builds use patch 0
   assert.throws(() => buildVersion(line, { RELEASE_VERSION: 'v1.2.0' }), /must be major.minor.patch/);
 });
 
-test('release:version fetches releases and tags with gh and exports RELEASE_VERSION', t => {
+test('release:version fetches releases and tags with gh and sets the version step output', t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'release-version-'));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   fs.writeFileSync(path.join(directory, 'package.json'), JSON.stringify({ version: '1.2' }));
@@ -63,19 +63,20 @@ test('release:version fetches releases and tags with gh and exports RELEASE_VERS
     require('node:module').syncBuiltinESMExports();
   `);
   const script = path.resolve('scripts/release-version.mts');
-  const githubEnv = path.join(directory, 'github.env');
-  const stdout = execFileSync(process.execPath, ['--require', mockGh, script], {
-    cwd: directory, encoding: 'utf8', env: { ...process.env, GITHUB_ENV: githubEnv }
-  });
+  const githubOutput = path.join(directory, 'github.output');
+  const env = { ...process.env, GITHUB_OUTPUT: githubOutput, GITHUB_ENV: path.join(directory, 'github.env') };
+  const stdout = execFileSync(process.execPath, ['--require', mockGh, script], { cwd: directory, encoding: 'utf8', env });
   assert.equal(stdout.trim(), '1.2.2');
-  assert.equal(fs.readFileSync(githubEnv, 'utf8'), 'RELEASE_VERSION=1.2.2\n');
+  assert.equal(fs.readFileSync(githubOutput, 'utf8'), 'version=1.2.2\n');
+  // The version is a step output only; it does not leak into the job environment.
+  assert.equal(fs.existsSync(env.GITHUB_ENV), false);
 
   const failure = spawnSync(process.execPath, ['--require', mockGh, script], {
-    cwd: directory, encoding: 'utf8', env: { ...process.env, MOCK_GH_FAILURE: 'true', GITHUB_ENV: githubEnv }
+    cwd: directory, encoding: 'utf8', env: { ...env, MOCK_GH_FAILURE: 'true' }
   });
   assert.equal(failure.status, 1);
   assert.match(failure.stderr, /GitHub CLI authentication failed/);
-  assert.equal(fs.readFileSync(githubEnv, 'utf8'), 'RELEASE_VERSION=1.2.2\n');
+  assert.equal(fs.readFileSync(githubOutput, 'utf8'), 'version=1.2.2\n');
 });
 
 test('the staged extension stamps one version into both manifests and contains only runtime files', () => {
