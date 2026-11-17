@@ -1,0 +1,134 @@
+name: Test, package, and draft release
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# Pushes to main share one queue from testing through draft creation; pull requests queue per PR.
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('pull-request-{0}', github.event.pull_request.number) || 'draft-release' }}
+  cancel-in-progress: false
+  queue: max
+
+# Verifiable-build controls: the runtime, package manager, and dependency graph are pinned and packaging is
+# deterministic, so anyone can rebuild a release and compare its SHA-256. CI attests the VSIX it drafts.
+jobs:
+  # Installs the SDK on x64 and arm64 agents of every operating system.
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - ubuntu-24.04
+          - ubuntu-24.04-arm
+          - windows-latest
+          - windows-11-arm
+          - macos-26-intel
+          - macos-latest
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-toolchain
+
+      - run: npm ci
+
+      - name: Allocate the release version
+        run: npm run release:version
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      # Builds, then runs the tests, writing build/test-results/<platform>-<arch>.xml.
+      # INSTALL_DART_E2E also installs a real Dart SDK on each operating system and architecture.
+      - run: npm test
+        env:
+          INSTALL_DART_E2E: 'true'
+
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: test-results-${{ matrix.runner }}
+          path: build/test-results/
+
+  test-results:
+    name: Publish test results
+    needs: test
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      contents: read
+      issues: read
+      pull-requests: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: test-results-*
+          path: test-results
+
+      # Writes the job summary on every run; comments only on pull requests.
+      - uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: test-results/**/*.xml
+          comment_mode: ${{ github.event_name == 'pull_request' && 'always' || 'off' }}
+
+  draft-release:
+    needs: test
+    if: ${{ github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      # Build provenance attestation: OIDC token for Sigstore signing, then persist the attestation.
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-toolchain
+
+      - run: npm ci
+
+      - name: Allocate the release version
+        run: npm run release:version
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - run: npm run package
+
+      - name: Attest build provenance for the VSIX
+        id: attest
+        uses: actions/attest@v4
+        with:
+          subject-path: dist/install-dart-v${{ env.RELEASE_VERSION }}.vsix
+
+      # Ship the Sigstore bundle with the release so the VSIX can also be verified offline.
+      - name: Collect release assets
+        run: cp "${{ steps.attest.outputs.bundle-path }}" "dist/install-dart-v$RELEASE_VERSION.vsix.sigstore.json"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: install-dart-vsix
+          path: dist/install-dart-v${{ env.RELEASE_VERSION }}.vsix*
+
+      # Drafts are mutable; the release (and its assets) become immutable only when published.
+      - name: Replace the draft release with the tested VSIX
+        run: |
+          TAG="v$RELEASE_VERSION"
+          if IS_DRAFT=$(gh release view "$TAG" --json isDraft --jq .isDraft); then
+            if [ "$IS_DRAFT" != "true" ]; then
+              echo "Release $TAG is published; refusing to replace it." >&2
+              exit 1
+            fi
+            gh release delete "$TAG" --yes
+          fi
+          gh release create "$TAG" \
+            "dist/install-dart-$TAG.vsix" \
+            "dist/install-dart-$TAG.vsix.sigstore.json" \
+            --draft --target "$GITHUB_SHA" --title "$TAG" --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}

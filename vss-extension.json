@@ -1,0 +1,66 @@
+{
+  "manifestVersion": 1,
+  "id": "installdart",
+  "name": "Install Dart SDK",
+  "publisher": "jeremy-morren",
+  "description": "Installs the Dart SDK on Windows, macOS, and Linux agents. A port of the dart-lang/setup-dart GitHub Action.",
+  "categories": ["Azure Pipelines"],
+  "tags": [
+    "dart",
+    "sdk",
+    "tool installer",
+    "pub"
+  ],
+  "public": true,
+  "targets": [{ "id": "Microsoft.VisualStudio.Services" }],
+  "icons": { "default": "images/logo.png" },
+  "files": [
+    { "path": "tasks/InstallDart" },
+    { "path": "LICENSE.txt", "addressable": true },
+    { "path": "docs", "addressable": true }
+  ],
+  "content": {
+    "details": { "path": "docs/Overview.md" },
+    "license": { "path": "LICENSE.txt" }
+  },
+  "links": {
+    "home": {
+      "uri": "https://github.com/jeremy-morren/install-dart"
+    },
+    "repository": {
+      "uri": "https://github.com/jeremy-morren/install-dart"
+    },
+    "issues": {
+      "uri": "https://github.com/jeremy-morren/install-dart/issues"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "uri": "https://github.com/jeremy-morren/install-dart"
+  },
+  "badges": [
+    {
+      "href": "https://github.com/jeremy-morren/install-dart",
+      "uri": "https://img.shields.io/badge/GitHub-Repository-181717?logo=github",
+      "description": "GitHub repository"
+    },
+    {
+      "href": "https://github.com/jeremy-morren/install-dart/actions/workflows/build.yml",
+      "uri": "https://img.shields.io/github/actions/workflow/status/jeremy-morren/install-dart/build.yml?label=Build",
+      "description": "Build"
+    },
+    {
+      "href": "https://github.com/jeremy-morren/install-dart/actions/workflows/publish.yml",
+      "uri": "https://img.shields.io/github/actions/workflow/status/jeremy-morren/install-dart/publish.yml?label=Publish",
+      "description": "Publish"
+    }
+  ],
+  "contributions": [
+    {
+      "id": "install-dart-task",
+      "type": "ms.vss-distributed-task.task",
+      "targets": ["ms.vss-distributed-task.tasks"],
+      "properties": { "name": "tasks/InstallDart" }
+    }
+  ]
+}

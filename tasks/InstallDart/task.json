@@ -1,0 +1,60 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/azure-pipelines-task-lib/master/tasks.schema.json",
+  "id": "dcd439e9-97b6-47af-99cc-c14e3f64d8df",
+  "name": "InstallDart",
+  "friendlyName": "Install Dart SDK",
+  "description": "Download the Dart SDK, cache it in the agent tool cache, and add dart to the PATH.",
+  "helpMarkDown": "Installs a Dart SDK channel (`stable`, `beta`, `dev`, `main`), release (`3.9`), or exact version (`3.9.4`), and sets `DART_HOME` and `PUB_CACHE`. [Overview](https://github.com/jeremy-morren/install-dart/blob/main/docs/Overview.md)",
+  "category": "Azure Pipelines",
+  "author": "Install Dart contributors",
+  "instanceNameFormat": "Install Dart SDK $(sdk)",
+  "visibility": ["Build", "Release"],
+  "runsOn": ["Agent", "DeploymentGroup"],
+  "inputs": [
+    {
+      "name": "sdk",
+      "type": "string",
+      "label": "SDK",
+      "required": false,
+      "defaultValue": "stable",
+      "helpMarkDown": "Which SDK version to setup. Can be specified using one of three forms:\n\n* A release channel, which will install the latest build from that channel. Available channels are `stable`, `beta`, `dev`, and `main`. See the [Dart SDK archive](https://dart.dev/get-dart/archive) for details.\n* An SDK release version - e.g. `2.19` or `3.1`. This will install the latest patch release for that specific release version.\n* A specific SDK version, e.g. `2.19.0` or `2.12.0-1.4.beta`."
+    },
+    {
+      "name": "flavor",
+      "type": "pickList",
+      "label": "Build flavor",
+      "required": false,
+      "defaultValue": "auto",
+      "options": {
+        "auto": "Automatic (raw for main, otherwise release)",
+        "release": "Release (published builds)",
+        "raw": "Raw (unpublished builds; not cached)"
+      },
+      "helpMarkDown": "Which build flavor to setup.\n\n* The available build flavors are `release` and `raw`.\n* The `release` flavor contains published builds.\n* The `raw` flavor contains unpublished builds; these can be used by developers to test against SDK versions before a signed release is available. Note that the `main` release channel only supports the `raw` build flavor. Raw builds are not cached.\n* `auto` (the default) uses `raw` for the `main` channel and `release` otherwise."
+    },
+    {
+      "name": "architecture",
+      "type": "pickList",
+      "label": "Architecture",
+      "required": false,
+      "defaultValue": "auto",
+      "options": {
+        "auto": "Agent architecture",
+        "x64": "x64",
+        "ia32": "ia32",
+        "arm": "arm",
+        "arm64": "arm64"
+      },
+      "helpMarkDown": "The CPU architecture to setup support for.\n\n* Valid options are `x64`, `ia32`, `arm`, and `arm64`.\n* `auto` (the default) uses the agent's architecture.\n* Note that not all CPU architectures are supported on all operating systems; see the [Dart system requirements](https://dart.dev/get-dart#system-requirements) for valid combinations."
+    }
+  ],
+  "outputVariables": [
+    {
+      "name": "dartVersion",
+      "description": "The installed Dart SDK version."
+    }
+  ],
+  "execution": {
+    "Node24": { "target": "dist/index.js" }
+  }
+}

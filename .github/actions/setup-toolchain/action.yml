@@ -1,0 +1,37 @@
+name: Set up repository toolchain
+description: Install the Node.js, npm, and (optionally) TFX CLI versions declared in package.json.
+
+inputs:
+  cache:
+    description: Package manager cache; use an empty string to disable caching.
+    default: npm
+  install-tfx:
+    description: Install the pinned TFX CLI globally for artifact publishing.
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v7
+      with:
+        node-version-file: package.json
+        cache: ${{ inputs.cache }}
+    - name: Toolchain versions
+      id: toolchain-versions
+      shell: bash
+      run: |
+        npmVersion="$(node -p "require('./package.json').engines.npm")"
+        echo "NPM version: $npmVersion"
+        echo "npmVersion=$npmVersion" >> $GITHUB_OUTPUT
+        tfxVersion="$(node -p "require('./package.json').devDependencies['tfx-cli']")"
+        echo "TFX CLI version: $tfxVersion"
+        echo "tfxVersion=$tfxVersion" >> $GITHUB_OUTPUT
+
+    - name: Pin npm
+      shell: bash
+      run: npm install --global "npm@${{ steps.toolchain-versions.outputs.npmVersion }}"
+      
+    - name: Pin publishing CLI
+      if: inputs.install-tfx == 'true'
+      shell: bash
+      run: npm install --global "tfx-cli@${{ steps.toolchain-versions.outputs.tfxVersion }}"
